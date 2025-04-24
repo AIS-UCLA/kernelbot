@@ -8,7 +8,7 @@ from statistics import fmean
 from discord.app_commands import Choice
 from typing import Callable, Tuple
 
-from utils import all_same, logger, prod
+from utils import prod
 
 ktypes = ["CUDA", "PTX"]
 async def ktype_ac(_, curr): return [Choice(name=kt, value=kt) for kt in ktypes if curr.lower() in kt.lower()]
@@ -27,9 +27,9 @@ def run(prog:CUDAProgram, global_size:tuple[int,int,int], local_size:tuple[int,i
 
 def gen_tests(prog:CUDAProgram, global_size:tuple[int,int,int], local_size:tuple[int,int,int],
               in_shapes:list[Tuple[int,...]], out_shape:Tuple[int,...], dtype,
-              rand_fn:Callable[...,np.ndarray], num_tests:int) -> Tuple[bytes, int, float]:
+              rand_fn:Callable[...,np.ndarray], num_tests:int) -> Tuple[bytes, float]:
   assert num_tests > 0, "must generate at least one test"
-  tensors, times, ops = {}, [], []
+  tensors, times = {}, []
   for i in range(num_tests):
     # create tensors and buffers
     args = [rand_fn(*shape).astype(dtype) for shape in in_shapes]
@@ -38,16 +38,13 @@ def gen_tests(prog:CUDAProgram, global_size:tuple[int,int,int], local_size:tuple
     print(dtype)
     out_tg = cualloc.alloc(prod(out_shape) * dtype.itemsize)
     # run kernel
-    GlobalCounters.reset()
     times.append(run(prog, global_size, local_size, *tg_args, out_tg))
-    ops.append(GlobalCounters.global_ops)
     # store to safetensors
     for j, t in enumerate(args): tensors[f"test{i}.in.{j}"] = t
     cualloc._copyout(flat_mv((out:=np.empty(out_shape, dtype=dtype)).data), out_tg)
     tensors[f"test{i}.out"] = out
 
-  if not all_same(ops): logger.info("discrepancy detected in flopcount, using last")
-  return safetensors.numpy.save(tensors), ops[-1], fmean(times)
+  return safetensors.numpy.save(tensors), fmean(times)
 
 def run_tests(prog:CUDAProgram, global_size:tuple[int,int,int], local_size:tuple[int,int,int],
               tensors: bytes) -> float:

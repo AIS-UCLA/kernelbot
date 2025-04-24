@@ -50,21 +50,21 @@ class CreateCog(Cog):
       return await interaction.edit_original_response(content=f"failed to load reference code: {e}")
     # generate tests
     await interaction.edit_original_response(content="generating tests...")
-    try: tests, flops, tm = gen_tests(prog, g_sz, l_sz, in_shapes, out_shape, dtypes[dtype], rand_fns[rand_fn], num_tests)
+    try: tests, tm = gen_tests(prog, g_sz, l_sz, in_shapes, out_shape, dtypes[dtype], rand_fns[rand_fn], num_tests)
     except Exception as e:
       import traceback
       print(traceback.format_exc())
       return await interaction.edit_original_response(content=f"failed to generate tests: {e}")
     await interaction.edit_original_response(content="creating challenge...")
-    db.execute("INSERT INTO challenges (name, desc, creator_id, tests, flops, timing) VALUES (?, ?, ?, ?, ?, ?);",
-               (name, desc, interaction.user.id, tests, flops, tm))
+    db.execute("INSERT INTO challenges (name, desc, creator_id, tests, timing) VALUES (?, ?, ?, ?, ?, ?);",
+               (name, desc, interaction.user.id, tests, tm))
     db.commit()
     active_chals.cache_clear()
     await interaction.delete_original_response()
     await interaction.channel.send(content=f"""# New Challenge: `{name}`
 Author: {interaction.user.mention}
-Input Shapes: `{input_shapes}`, Output Shape: `{out_shape}`
-Total FLOPs: {flops}, Baseline time: {fmt_time(tm)}
+Input Shapes: `{input_shapes}`, Output Shape: `{out_shape}` Dtype: `{dtype}`
+Baseline time: {fmt_time(tm)}
 
 {desc}
 """)
