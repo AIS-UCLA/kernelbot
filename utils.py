@@ -82,9 +82,6 @@ def convert_literals(func):
   anno = { name: param for name, param in sig.parameters.items() if param.annotation is not inspect._empty or name == "self" }
   new_params = [param.replace(annotation=str) if name != "self" and get_origin(hints[name]) in (list, tuple) else param for name, param in anno.items()]
 
-  print(sig)
-  print(sig.replace(parameters=new_params))
-
   def check(val, typ:type) -> bool:
     origin = get_origin(typ)
     args = get_args(typ)

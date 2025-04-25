@@ -1,7 +1,6 @@
 import discord
 from discord.app_commands import autocomplete, Choice, command
 from discord.ext.commands import Cog
-from typing import Tuple
 
 from run import cc, run_tests, ktypes, ktype_ac
 from utils import check_user, convert_literals, active_chals, db, fmt_time
