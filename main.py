@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from config import DISCORD_TOKEN
 from utils import logger, formatter
-from cogs import SubmitCog, CreateCog
+from cogs import ShowCog, SubmitCog, CreateCog
 
 class KernelBot(commands.Bot):
   def __init__(self):
@@ -15,6 +15,7 @@ class KernelBot(commands.Bot):
     logger.info(f"Syncing commands")
     await self.add_cog(SubmitCog(self))
     await self.add_cog(CreateCog(self))
+    await self.add_cog(ShowCog(self))
 
   async def on_ready(self):
     logger.info(f"Logged in as {self.user}")

@@ -1,5 +1,6 @@
 from ast import literal_eval
 import discord, logging, functools, sqlite3, operator, inspect
+from discord.app_commands import Choice
 from enum import Enum
 from typing import Iterable, TypeVar, Union, get_args, get_origin, get_type_hints
 
@@ -108,12 +109,21 @@ def convert_literals(func):
           bound.arguments[arg] = val
     return await func(*bound.args, **bound.kwargs)
   wrapper.__signature__ = sig.replace(parameters=new_params)
-
   return wrapper
 
 @functools.cache
-def active_chals() -> list[str]:
-  return [t[0] for t in db.execute("SELECT name FROM challenges;").fetchall()]
+def active_chals() -> list[str]: return [t[0] for t in db.execute("SELECT name FROM challenges;").fetchall()]
+
+async def challenge_ac(_, curr): return [Choice(name=chal, value=chal) for chal in active_chals() if curr.lower() in chal.lower()]
+
+@functools.cache
+def make_leaderboard(chal:str) -> str:
+  resp = db.execute("""
+    SELECT user_id, name, type, timing
+    FROM submissions
+    WHERE comp_id = (SELECT id FROM challenges WHERE name = ?)
+    ORDER BY timing ASC;""", (chal,)).fetchall()
+  return f"# Challenge: `{chal}`\n"+"\n".join([f"{i+1}. `{name} ({ktype})` in {fmt_time(tm)} by <@{uid}>" for i, (uid, name, ktype, tm) in enumerate(resp)])
 
 T = TypeVar("T")
 def all_same(items:list[T]): return all(x == items[0] for x in items)

@@ -1,12 +1,11 @@
 import discord
-from discord.app_commands import autocomplete, Choice, command
+from discord.app_commands import autocomplete, command
 from discord.ext.commands import Cog
 
 from run import cc, run_tests, ktypes, ktype_ac
-from utils import check_user, convert_literals, active_chals, db, fmt_time
+from utils import check_user, convert_literals, challenge_ac, db, make_leaderboard
 
 class SubmitCog(Cog):
-  async def challenge_ac(self, _, curr): return [Choice(name=chal, value=chal) for chal in active_chals() if curr.lower() in chal.lower()]
 
   @command()
   @check_user()
@@ -26,5 +25,9 @@ class SubmitCog(Cog):
     await interaction.edit_original_response(content="running...")
     try: tm = run_tests(prog, global_size, local_size, tensors)
     except Exception as e: return await interaction.edit_original_response(content=f"error while running tests: {e}")
-    await interaction.edit_original_response(content=fmt_time(tm))
+    db.execute("INSERT INTO submissions (name, type, source, comp_id, user_id, timing) VALUES (?, ?, ?, ?, ?, ?);",
+               (name, ktype, src, chal, interaction.user.id, tm))
+    db.commit()
+    make_leaderboard.cache_clear()
+    await interaction.edit_original_response(content=make_leaderboard(challenge))
 
