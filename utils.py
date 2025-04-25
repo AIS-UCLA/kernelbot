@@ -1,6 +1,7 @@
-import discord, logging, functools, sqlite3, operator
+from ast import literal_eval
+import discord, logging, functools, sqlite3, operator, inspect
 from enum import Enum
-from typing import Iterable, TypeVar, Union
+from typing import Iterable, TypeVar, Union, get_args, get_origin, get_type_hints
 
 from config import DB
 
@@ -74,6 +75,44 @@ def check_user(*perms:Perm):
       else: await interation.response.send_message("this command requires registration", ephemeral=True)
     return wrapper
   return dec
+
+def convert_literals(func):
+  hints = get_type_hints(func)
+  sig = inspect.signature(func)
+  anno = { name: param for name, param in sig.parameters.items() if param.annotation is not inspect._empty or name == "self" }
+  new_params = [param.replace(annotation=str) if name != "self" and get_origin(hints[name]) in (list, tuple) else param for name, param in anno.items()]
+
+  print(sig)
+  print(sig.replace(parameters=new_params))
+
+  def check(val, typ:type) -> bool:
+    origin = get_origin(typ)
+    args = get_args(typ)
+    if origin is tuple:
+      if not isinstance(val, tuple): return False
+      if len(args) == 2 and args[1] is Ellipsis: return all(check(v, args[0]) for v in val)
+      if len(val) != len(args): return False
+      return all(check(v, t) for v, t in zip(val, args))
+    if origin is list:
+      if not isinstance(val, list): return False
+      return all(check(v, args[0]) for v in val)
+    return isinstance(val, typ)
+
+  @functools.wraps(func)
+  async def wrapper(self, i:discord.Interaction, *args, **kwargs):
+    bound = sig.bind(self, i, *args, **kwargs)
+    bound.apply_defaults()
+
+    for arg, param in anno.items():
+      if arg in bound.arguments:
+        if get_origin(param.annotation) in (list, tuple) and isinstance(val:=bound.arguments[arg], str):
+          val = literal_eval(val)
+          if not check(val, param.annotation): await i.response.send_message(f"invalid argument {arg}, expected {param.annotation}", ephemeral=True)
+          bound.arguments[arg] = val
+    return await func(*bound.args, **bound.kwargs)
+  wrapper.__signature__ = sig.replace(parameters=new_params)
+
+  return wrapper
 
 @functools.cache
 def active_chals() -> list[str]:
