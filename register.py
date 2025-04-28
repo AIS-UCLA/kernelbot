@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import os, sys, sqlite3
-from config import DB
+import os, sys
+from db import db
 
 if __name__ == "__main__":
   if len(sys.argv) != 2:
