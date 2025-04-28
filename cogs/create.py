@@ -3,7 +3,8 @@ import numpy as np
 from discord.app_commands import Choice, autocomplete, command
 from discord.ext.commands import Cog
 
-from utils import Perm, check_user, convert_literals, db, active_chals, fmt_time
+from utils import convert_literals, active_chals, fmt_time
+from db import db, Perm, check_user
 from run import cc, gen_tests, ktypes, ktype_ac
 
 dtypes = {"double":np.dtype("float64"),"single":np.dtype("float32"),"half":np.dtype("float16")}

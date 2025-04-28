@@ -3,7 +3,8 @@ from discord.app_commands import autocomplete, command
 from discord.ext.commands import Cog
 
 from run import cc, run_tests, ktypes, ktype_ac
-from utils import check_user, convert_literals, challenge_ac, db, make_leaderboard
+from utils import convert_literals, challenge_ac, make_leaderboard
+from db import db, check_user
 
 class SubmitCog(Cog):
 
