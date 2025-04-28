@@ -1,4 +1,4 @@
-import discord, functools, sqlite3
+import sqlite3
 from enum import Enum
 
 DB = "kernelbot.db"
@@ -49,17 +49,5 @@ db = init_db()
 
 class Perm(Enum):
   CREATE_CHALLENGE = 0b1
-
-def check_user(*perms:Perm):
-  def dec(func):
-    @functools.wraps(func)
-    async def wrapper(self, interation: discord.Interaction, *args, **kwargs):
-      if (resp := db.execute("SELECT perms FROM users WHERE id = ?", (interation.user.id,)).fetchone()) is not None:
-        if not all([bool(p.value & resp[0])  for p in perms]):
-          await interation.response.send_message(f"missing permissions: {', '.join([p.name for p in perms])}", ephemeral=True)
-        else: return await func(self, interation, *args, **kwargs)
-      else: await interation.response.send_message("this command requires registration", ephemeral=True)
-    return wrapper
-  return dec
 
 

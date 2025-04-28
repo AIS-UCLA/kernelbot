@@ -3,7 +3,19 @@ import discord, logging, functools, operator, inspect
 from discord.app_commands import Choice
 from typing import Iterable, TypeVar, Union, get_args, get_origin, get_type_hints
 
-from db import db
+from db import db, Perm
+
+def check_user(*perms:Perm):
+  def dec(func):
+    @functools.wraps(func)
+    async def wrapper(self, interation: discord.Interaction, *args, **kwargs):
+      if (resp := db.execute("SELECT perms FROM users WHERE id = ?", (interation.user.id,)).fetchone()) is not None:
+        if not all([bool(p.value & resp[0])  for p in perms]):
+          await interation.response.send_message(f"missing permissions: {', '.join([p.name for p in perms])}", ephemeral=True)
+        else: return await func(self, interation, *args, **kwargs)
+      else: await interation.response.send_message("this command requires registration", ephemeral=True)
+    return wrapper
+  return dec
 
 def init_logger():
   formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(message)s", datefmt="%b %d %H:%M:%S")
@@ -15,6 +27,7 @@ def init_logger():
   return logger, formatter
 
 logger, formatter = init_logger()
+
 def convert_literals(func):
   hints = get_type_hints(func)
   sig = inspect.signature(func)
