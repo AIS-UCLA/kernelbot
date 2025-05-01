@@ -8,7 +8,7 @@
 #endif
 
 int main(int argc, char **argv) {
-  int uid;
+  long long uid;
   char *username;
   sqlite3 *db;
   sqlite3_stmt *stmt;
@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  uid = atoi(argv[1]);
+  uid = atoll(argv[1]);
   if (!(username = getlogin())) {
     perror("getlogin");
     return 1;
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  sqlite3_bind_int(stmt, 1, uid);
+  sqlite3_bind_int64(stmt, 1, uid);
   sqlite3_bind_text(stmt, 2, username, -1, SQLITE_STATIC);
 
   if (sqlite3_step(stmt) != SQLITE_DONE) {
