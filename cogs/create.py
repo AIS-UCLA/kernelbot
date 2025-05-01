@@ -40,14 +40,14 @@ class CreateCog(Cog):
       print(traceback.format_exc())
       return await interaction.edit_original_response(content=f"failed to generate tests: {e}")
     await interaction.edit_original_response(content="creating challenge...")
-    db.execute("INSERT INTO challenges (name, desc, creator_id, tests, timing) VALUES (?, ?, ?, ?, ?, ?);",
+    db.execute("INSERT INTO challenges (name, desc, creator_id, tests, timing) VALUES (?, ?, ?, ?, ?);",
                (name, desc, interaction.user.id, tests, tm))
     db.commit()
     active_chals.cache_clear()
     await interaction.delete_original_response()
     await interaction.channel.send(content=f"""# New Challenge: `{name}`
 Author: {interaction.user.mention}
-Input Shapes: `{input_shapes}`, Output Shape: `{out_shape}` Dtype: `{dtype}`
+Input Shapes: `{input_shapes}`, Output Shape: `{output_shape}` Dtype: `{dtype}`
 Baseline time: {fmt_time(tm)}
 
 {desc}
