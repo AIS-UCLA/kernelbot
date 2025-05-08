@@ -13,22 +13,34 @@ class SubmitCog(Cog):
   @autocomplete(challenge=challenge_ac, ktype=ktype_ac)
   @convert_literals
   async def submit(self, interaction: discord.Interaction, challenge:str, ktype:str, name:str, global_size:tuple[int,int,int],
-                   local_size:tuple[int,int,int], kernel:discord.Attachment):
+                  local_size:tuple[int,int,int], kernel:discord.Attachment):
     """Submit a kernel for a challenge"""
-    await interaction.response.send_message("checking...")
+    await interaction.response.send_message("checking...", ephemeral=True)
     if ktype not in ktypes: return await interaction.response.send_message("invalid ktype", ephemeral=True)
     chal, tensors = db.execute("SELECT id, tests FROM challenges as c WHERE c.name = ?", (challenge,)).fetchone()
     if chal is None: return await interaction.response.send_message(f"could not find challenge {challenge}", ephemeral=True)
     await interaction.edit_original_response(content="downloading...")
     src = (await kernel.read()).decode("utf-8")
     await interaction.edit_original_response(content="compiling...")
-    try: prog = cc(src, ktype, name)
-    except Exception as e: return await interaction.edit_original_response(content=f"failed to compile: {e}")
+    try: 
+      prog = cc(src, ktype, name)
+    except Exception as e: 
+      # Capture detailed error message with code snippet
+      error_msg = str(e)
+      formatted_error = f"```\n{error_msg}\n```"
+      return await interaction.edit_original_response(content=f"Failed to compile:\n{formatted_error}")
+    
     await interaction.edit_original_response(content="running...")
-    try: tm = run_tests(prog, global_size, local_size, tensors)
-    except Exception as e: return await interaction.edit_original_response(content=f"error while running tests: {e}")
+    try: 
+      tm = run_tests(prog, global_size, local_size, tensors)
+    except Exception as e: 
+      # Format the error nicely with code blocks
+      error_msg = str(e)
+      formatted_error = f"```\n{error_msg}\n```"
+      return await interaction.edit_original_response(content=f"Error while running tests:\n{formatted_error}")
+    
     db.execute("INSERT INTO submissions (name, type, source, comp_id, user_id, timing) VALUES (?, ?, ?, ?, ?, ?);",
-               (name, ktype, src, chal, interaction.user.id, tm))
+              (name, ktype, src, chal, interaction.user.id, tm))
     db.commit()
     make_leaderboard.cache_clear()  # Clear cache to ensure updated leaderboard data
     

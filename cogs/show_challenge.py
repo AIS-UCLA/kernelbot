@@ -16,7 +16,7 @@ class ShowCog(Cog):
   )
   async def show(self, interaction: discord.Interaction, challenge:Optional[str]):
     """Show leaderboard for a challenge"""
-    await interaction.response.send_message("generating listing...")
+    await interaction.response.send_message("generating listing...", ephemeral=True)
     if challenge is None:
       await interaction.edit_original_response(content="## Active Challenges\n" + "\n".join([f"- `{chal}`" for chal in active_chals()]))
     else: await interaction.edit_original_response(content=make_leaderboard(challenge))
