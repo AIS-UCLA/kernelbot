@@ -6,16 +6,32 @@ from typing import Iterable, TypeVar, Union, get_args, get_origin, get_type_hint
 from db import db, Perm
 
 def check_user(*perms:Perm):
-  def dec(func):
-    @functools.wraps(func)
-    async def wrapper(self, interation: discord.Interaction, *args, **kwargs):
-      if (resp := db.execute("SELECT perms FROM users WHERE id = ?", (interation.user.id,)).fetchone()) is not None:
-        if not all([bool(p.value & resp[0])  for p in perms]):
-          await interation.response.send_message(f"missing permissions: {', '.join([p.name for p in perms])}", ephemeral=True)
-        else: return await func(self, interation, *args, **kwargs)
-      else: await interation.response.send_message("this command requires registration", ephemeral=True)
-    return wrapper
-  return dec
+    def dec(func):
+        @functools.wraps(func)
+        async def wrapper(self, interaction: discord.Interaction, *args, **kwargs):
+            # For the USER permission, check if they have the "cuda-coda" role
+            if Perm.USER in perms and any(role.name.lower() == "cuda-coda" for role in interaction.user.roles):
+                # If we only need USER permission, proceed
+                if all(p == Perm.USER for p in perms):
+                    return await func(self, interaction, *args, **kwargs)
+            
+            # For ADMIN permission, check if they have an "admin" role
+            if Perm.ADMIN in perms and any(role.name.lower() == "kernelbot-admin" for role in interaction.user.roles):
+                return await func(self, interaction, *args, **kwargs)
+            
+            # If we got here, permissions are insufficient
+            missing_perms = []
+            if Perm.USER in perms and not any(role.name.lower() == "cuda-coda" for role in interaction.user.roles):
+                missing_perms.append("CUDA-CODA role")
+            if Perm.ADMIN in perms and not any(role.name.lower() == "kernelbot-admin" for role in interaction.user.roles):
+                missing_perms.append("ADMIN role")
+                
+            await interaction.response.send_message(
+                f"Missing permissions: {', '.join(missing_perms)}", 
+                ephemeral=True
+            )
+        return wrapper
+    return dec
 
 def init_logger():
   formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(message)s", datefmt="%b %d %H:%M:%S")

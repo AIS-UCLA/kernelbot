@@ -15,7 +15,7 @@ class CreateCog(Cog):
   async def rand_fn_ac(self, _, curr): return [Choice(name=dt, value=dt) for dt in rand_fns.keys() if curr.lower() in dt]
 
   @command()
-  @check_user(Perm.CREATE_CHALLENGE)
+  @check_user(Perm.ADMIN)
   @autocomplete(dtype=dtype_ac, rand_fn=rand_fn_ac, ktype=ktype_ac)
   @convert_literals
   async def create(self, interaction: discord.Interaction, name:str, desc:str, ktype:str, input_shapes:list[tuple[int,...]],

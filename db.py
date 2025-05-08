@@ -49,5 +49,7 @@ db = init_db()
 
 class Perm(Enum):
   CREATE_CHALLENGE = 0b1
+  USER = 1
+  ADMIN = 2
 
 

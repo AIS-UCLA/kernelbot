@@ -4,12 +4,12 @@ from discord.ext.commands import Cog
 
 from run import cc, run_tests, ktypes, ktype_ac
 from utils import check_user, convert_literals, challenge_ac, make_leaderboard
-from db import db
+from db import db, Perm
 
 class SubmitCog(Cog):
 
   @command()
-  @check_user()
+  @check_user(Perm.USER)
   @autocomplete(challenge=challenge_ac, ktype=ktype_ac)
   @convert_literals
   async def submit(self, interaction: discord.Interaction, challenge:str, ktype:str, name:str, global_size:tuple[int,int,int],

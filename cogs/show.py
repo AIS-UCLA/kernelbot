@@ -4,9 +4,12 @@ from discord.app_commands import autocomplete, command
 from discord.ext.commands import Cog
 
 from utils import active_chals, challenge_ac, make_leaderboard
+from db import db, Perm
+from utils import check_user
 
 class ShowCog(Cog):
   @command()
+  @check_user(Perm.USER)
   @autocomplete(challenge=challenge_ac)
   async def show(self, interaction: discord.Interaction, challenge:Optional[str]):
     await interaction.response.send_message("generating listing...")

@@ -24,4 +24,11 @@ class KernelBot(commands.Bot):
       self.tree.copy_global_to(guild=guild)
       await self.tree.sync(guild=guild)
 
+  @commands.is_owner()
+  @commands.command()
+  async def sync(self, ctx):
+      """Sync the application commands"""
+      await self.tree.sync()
+      await ctx.send("Commands synced globally!")
+
 if __name__ == "__main__": KernelBot().run(DISCORD_TOKEN, log_formatter=formatter)
