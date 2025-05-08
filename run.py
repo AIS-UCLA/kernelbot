@@ -47,24 +47,35 @@ def gen_tests(prog:CUDAProgram, global_size:tuple[int,int,int], local_size:tuple
   return safetensors.numpy.save(tensors), fmean(times)
 
 def run_tests(prog:CUDAProgram, global_size:tuple[int,int,int], local_size:tuple[int,int,int],
-              tensors: bytes) -> float:
-  # determin number of tests
-  tensor_dict = safetensors.numpy.load(tensors)
-  num_tests = len(set([k.split('.')[0] for k in tensor_dict.keys()]))
-  num_args = max([int(k.split('.')[-1]) for k in tensor_dict.keys() if 'in' in k]) + 1
-  times = []
-  for i in range(num_tests):
-    # create tensors and buffers
-    args = [tensor_dict[f"test{i}.in.{j}"] for j in range(num_args)]
-    tg_args = [cualloc.alloc(arg.size * arg.itemsize) for arg in args]
-    for arg, tg in zip(args, tg_args): cualloc._copyin(tg, bytearray(arg))
-    out_tg = cualloc.alloc(tensor_dict[f"test{i}.out"].size * tensor_dict[f"test{i}.out"].itemsize)
-    # run kernel
-    GlobalCounters.reset()
-    times.append(run(prog, global_size, local_size, *tg_args, out_tg))
-    # check output
-    out = np.empty(tensor_dict[f"test{i}.out"].shape, dtype=tensor_dict[f"test{i}.out"].dtype)
-    cualloc._copyout(flat_mv(out.data), out_tg)
-    np.testing.assert_allclose(out, tensor_dict[f"test{i}.out"], rtol=1e-3, atol=1e-3)
-  return fmean(times)
-
+              tensors: bytes, challenge_name: str = None, transpose_a: bool = False, 
+              transpose_b: bool = False) -> float:
+    tensor_dict = safetensors.numpy.load(tensors)
+    num_tests = len(set([k.split('.')[0] for k in tensor_dict.keys()]))
+    num_args = max([int(k.split('.')[-1]) for k in tensor_dict.keys() if 'in' in k]) + 1
+    times = []
+    
+    for i in range(num_tests):
+        args = [tensor_dict[f"test{i}.in.{j}"] for j in range(num_args)]
+        
+        if challenge_name and challenge_name.lower() == "matmul":
+            if transpose_a and len(args) > 0:
+                args[0] = args[0].T.copy()  # ensure contiguous memory
+            if transpose_b and len(args) > 1:
+                args[1] = args[1].T.copy()
+        
+        tg_args = [cualloc.alloc(arg.size * arg.itemsize) for arg in args]
+        for arg, tg in zip(args, tg_args): 
+            cualloc._copyin(tg, bytearray(arg))
+        
+        out_tg = cualloc.alloc(tensor_dict[f"test{i}.out"].size * tensor_dict[f"test{i}.out"].itemsize)
+        
+        # run kernel
+        GlobalCounters.reset()
+        times.append(run(prog, global_size, local_size, *tg_args, out_tg))
+        
+        # check output
+        out = np.empty(tensor_dict[f"test{i}.out"].shape, dtype=tensor_dict[f"test{i}.out"].dtype)
+        cualloc._copyout(flat_mv(out.data), out_tg)
+        np.testing.assert_allclose(out, tensor_dict[f"test{i}.out"], rtol=1e-3, atol=1e-3)
+    
+    return fmean(times)

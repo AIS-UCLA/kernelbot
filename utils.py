@@ -11,19 +11,19 @@ def check_user(*perms:Perm):
         async def wrapper(self, interaction: discord.Interaction, *args, **kwargs):
             has_permission = False
             
-            if Perm.USER in perms and any(role.name == "CUDA-Coda" for role in interaction.user.roles):
+            if Perm.USER in perms and any(role.name == "CUDA Coda" for role in interaction.user.roles):
                 has_permission = True
                 
-            if Perm.ADMIN in perms and any(role.name == "kernelbot-admin" for role in interaction.user.roles):
+            if Perm.ADMIN in perms and any(role.name == "kernelbot admin" for role in interaction.user.roles):
                 has_permission = True
                 
             if not has_permission:
                 required_roles = []
                 if Perm.USER in perms:
                     # Also fix here
-                    required_roles.append("CUDA-Coda")
+                    required_roles.append("CUDA Coda")
                 if Perm.ADMIN in perms:
-                    required_roles.append("kernelbot-admin")
+                    required_roles.append("kernelbot admin")
                 
                 role_list = " or ".join(f"`{r}`" for r in required_roles)
                 await interaction.response.send_message(
@@ -89,8 +89,8 @@ def active_chals() -> list[str]: return [t[0] for t in db.execute("SELECT name F
 async def challenge_ac(_, curr): return [Choice(name=chal, value=chal) for chal in active_chals() if curr.lower() in chal.lower()]
 
 @functools.cache
-def make_leaderboard(chal:str) -> str:
-  # Only show the best submission per user
+def make_leaderboard(chal:str, with_medals:bool=True) -> str:
+  # Get best submission per user
   resp = db.execute("""
     WITH RankedSubmissions AS (
       SELECT 
@@ -109,7 +109,28 @@ def make_leaderboard(chal:str) -> str:
     ORDER BY timing ASC;
   """, (chal,)).fetchall()
   
-  return f"# Challenge: `{chal}`\n"+"\n".join([f"{i+1}. `{name} ({ktype})` in {fmt_time(tm)} by <@{uid}>" for i, (uid, name, ktype, tm) in enumerate(resp)])
+  header = f"# Challenge: `{chal}`\n"
+  
+  if not resp:
+    return header + "No submissions yet."
+  
+  # Add medal emojis for top 3 if requested
+  rankings = []
+  for i, (uid, name, ktype, tm) in enumerate(resp):
+    position = i + 1
+    
+    if with_medals and position <= 3:
+      if position == 1:
+        medal = "🥇 "
+      elif position == 2:
+        medal = "🥈 "
+      elif position == 3:
+        medal = "🥉 "
+      rankings.append(f"{medal} `{name} ({ktype})` in {fmt_time(tm)} by <@{uid}>")
+    else:
+      rankings.append(f"{position}. `{name} ({ktype})` in {fmt_time(tm)} by <@{uid}>")
+  
+  return header + "\n".join(rankings)
 
 def format_submission_result(challenge_name: str, user_id: str, kernel_name: str, kernel_type: str, timing: float) -> str:
   # Get the user's submissions for the challenge
@@ -130,6 +151,44 @@ def format_submission_result(challenge_name: str, user_id: str, kernel_name: str
     message += f"Your best time is {fmt_time(best_time)}"
   
   return message
+
+def get_submission_position(challenge: str, user_id: int) -> int:
+    """Get position of the user in the leaderboard for this challenge"""
+    leaderboard = db.execute("""
+        WITH RankedSubmissions AS (
+            SELECT 
+                user_id, 
+                MIN(timing) as best_time,
+                ROW_NUMBER() OVER (ORDER BY MIN(timing) ASC) as position
+            FROM submissions
+            WHERE comp_id = (SELECT id FROM challenges WHERE name = ?)
+            GROUP BY user_id
+        )
+        SELECT position 
+        FROM RankedSubmissions
+        WHERE user_id = ?
+    """, (challenge, user_id)).fetchone()
+    
+    return leaderboard[0] if leaderboard else 0
+
+def get_ordinal(n: int) -> str:
+    """Return number with ordinal suffix (1st, 2nd, 3rd, etc)"""
+    if 11 <= (n % 100) <= 13:
+        suffix = 'th'
+    else:
+        suffix = ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][n % 10]
+    return f"{n}{suffix}"
+
+def format_time(seconds: float) -> str:
+    """Format time with appropriate units"""
+    if seconds < 1e-6:
+        return f"{seconds * 1e9:.0f} ns"
+    elif seconds < 1e-3:
+        return f"{seconds * 1e6:.0f} μs" 
+    elif seconds < 1:
+        return f"{seconds * 1e3:.0f} ms"
+    else:
+        return f"{seconds:.2f} s"
 
 T = TypeVar("T")
 def all_same(items:list[T]): return all(x == items[0] for x in items)

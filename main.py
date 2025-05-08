@@ -32,16 +32,16 @@ class KernelBot(commands.Bot):
 
   async def set_command_permissions(self, guild):
       """Set command permissions based on the required roles"""
-      cuda_coda_role = discord.utils.get(guild.roles, name="CUDA-Coda")
-      admin_role = discord.utils.get(guild.roles, name="kernelbot-admin")
+      cuda_coda_role = discord.utils.get(guild.roles, name="CUDA Coda")
+      admin_role = discord.utils.get(guild.roles, name="kernelbot admin")
       
       logger.info(f"Available roles in {guild.name}: {[role.name for role in guild.roles]}")
       
       if not cuda_coda_role:
-          logger.warning(f"Could not find CUDA-Coda role in guild {guild.name}")
+          logger.warning(f"Could not find CUDA Coda role in guild {guild.name}")
       
       if not admin_role:
-          logger.warning(f"Could not find kernelbot-admin role in guild {guild.name}")
+          logger.warning(f"Could not find kernelbot admin role in guild {guild.name}")
       
       if not cuda_coda_role or not admin_role:
           return

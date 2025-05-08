@@ -19,4 +19,7 @@ class ShowCog(Cog):
     await interaction.response.send_message("generating listing...", ephemeral=True)
     if challenge is None:
       await interaction.edit_original_response(content="## Active Challenges\n" + "\n".join([f"- `{chal}`" for chal in active_chals()]))
-    else: await interaction.edit_original_response(content=make_leaderboard(challenge))
+    else:
+      # Get the leaderboard with medals for top 3
+      leaderboard = make_leaderboard(challenge, with_medals=True)
+      await interaction.edit_original_response(content=leaderboard)

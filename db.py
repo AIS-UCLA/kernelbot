@@ -23,13 +23,15 @@ CHALLENGES_SCHEMA = """challenges (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )"""
 SUBMISSIONS_SCHEMA = """submissions (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,          -- unique id
-  name       TEXT NOT NULL,                              -- submission name
-  type       TEXT NOT NULL,                              -- eg. CUDA, PTX
-  source     TEXT NOT NULL,                              -- source code
-  comp_id    INTEGER NOT NULL REFERENCES challenges(id), -- competition id
-  user_id    INTEGER NOT NULL REFERENCES users(discord), -- discord id of creator
-  timing     REAL NOT NULL,                              -- test timing
+  id        INTEGER PRIMARY KEY,
+  name      TEXT NOT NULL,                              -- submission name
+  type      TEXT NOT NULL,                              -- eg. CUDA, PTX
+  source    TEXT NOT NULL,                              -- source code
+  comp_id   INTEGER NOT NULL REFERENCES challenges(id), -- competition id
+  user_id   INTEGER NOT NULL REFERENCES users(discord), -- discord id of creator
+  timing    REAL NOT NULL,                              -- test timing
+  transpose_a BOOLEAN DEFAULT 0,                        -- whether A was transposed
+  transpose_b BOOLEAN DEFAULT 0,                        -- whether B was transposed
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )"""
 

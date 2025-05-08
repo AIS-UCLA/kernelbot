@@ -17,14 +17,17 @@ class DeleteCog(Cog):
           await interaction.response.send_message("Please specify a challenge to delete.", ephemeral=True)
           return
           
-      exists = db.execute("SELECT 1 FROM challenges WHERE name = ?", (challenge,)).fetchone()
-      if not exists:
+      challenge_data = db.execute("SELECT id FROM challenges WHERE name = ?", (challenge,)).fetchone()
+      if not challenge_data:
           await interaction.response.send_message(f"Challenge `{challenge}` not found.", ephemeral=True)
           return
       
+      challenge_id = challenge_data[0]
+      
       try:
           db.execute("BEGIN TRANSACTION")
-          db.execute("DELETE FROM submissions WHERE challenge = ?", (challenge,))
+          # Use comp_id instead of challenge to reference the challenge
+          db.execute("DELETE FROM submissions WHERE comp_id = ?", (challenge_id,))
           db.execute("DELETE FROM challenges WHERE name = ?", (challenge,))
           db.execute("COMMIT")
           
