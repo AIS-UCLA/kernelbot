@@ -9,27 +9,32 @@ def check_user(*perms:Perm):
     def dec(func):
         @functools.wraps(func)
         async def wrapper(self, interaction: discord.Interaction, *args, **kwargs):
-            # For the USER permission, check if they have the "cuda-coda" role
-            if Perm.USER in perms and any(role.name.lower() == "cuda-coda" for role in interaction.user.roles):
-                # If we only need USER permission, proceed
-                if all(p == Perm.USER for p in perms):
-                    return await func(self, interaction, *args, **kwargs)
+            has_permission = False
             
-            # For ADMIN permission, check if they have an "admin" role
-            if Perm.ADMIN in perms and any(role.name.lower() == "kernelbot-admin" for role in interaction.user.roles):
-                return await func(self, interaction, *args, **kwargs)
-            
-            # If we got here, permissions are insufficient
-            missing_perms = []
-            if Perm.USER in perms and not any(role.name.lower() == "cuda-coda" for role in interaction.user.roles):
-                missing_perms.append("CUDA-CODA role")
-            if Perm.ADMIN in perms and not any(role.name.lower() == "kernelbot-admin" for role in interaction.user.roles):
-                missing_perms.append("ADMIN role")
+            if Perm.USER in perms and any(role.name == "CUDA-Coda" for role in interaction.user.roles):
+                has_permission = True
                 
-            await interaction.response.send_message(
-                f"Missing permissions: {', '.join(missing_perms)}", 
-                ephemeral=True
-            )
+            if Perm.ADMIN in perms and any(role.name == "kernelbot-admin" for role in interaction.user.roles):
+                has_permission = True
+                
+            if not has_permission:
+                required_roles = []
+                if Perm.USER in perms:
+                    # Also fix here
+                    required_roles.append("CUDA-Coda")
+                if Perm.ADMIN in perms:
+                    required_roles.append("kernelbot-admin")
+                
+                role_list = " or ".join(f"`{r}`" for r in required_roles)
+                await interaction.response.send_message(
+                    f"Missing permissions: You need the {role_list} role to use this command.",
+                    ephemeral=True
+                )
+                return
+                
+            return await func(self, interaction, *args, **kwargs)
+            
+        wrapper._check_user_perms = perms
         return wrapper
     return dec
 
@@ -85,12 +90,46 @@ async def challenge_ac(_, curr): return [Choice(name=chal, value=chal) for chal 
 
 @functools.cache
 def make_leaderboard(chal:str) -> str:
+  # Only show the best submission per user
   resp = db.execute("""
+    WITH RankedSubmissions AS (
+      SELECT 
+        s.user_id, 
+        s.name, 
+        s.type, 
+        s.timing,
+        ROW_NUMBER() OVER (PARTITION BY s.user_id ORDER BY s.timing ASC) as rn
+      FROM submissions s
+      JOIN challenges c ON s.comp_id = c.id
+      WHERE c.name = ?
+    )
     SELECT user_id, name, type, timing
-    FROM submissions
-    WHERE comp_id = (SELECT id FROM challenges WHERE name = ?)
-    ORDER BY timing ASC;""", (chal,)).fetchall()
+    FROM RankedSubmissions
+    WHERE rn = 1
+    ORDER BY timing ASC;
+  """, (chal,)).fetchall()
+  
   return f"# Challenge: `{chal}`\n"+"\n".join([f"{i+1}. `{name} ({ktype})` in {fmt_time(tm)} by <@{uid}>" for i, (uid, name, ktype, tm) in enumerate(resp)])
+
+def format_submission_result(challenge_name: str, user_id: str, kernel_name: str, kernel_type: str, timing: float) -> str:
+  # Get the user's submissions for the challenge
+  best_time = db.execute("""
+    SELECT MIN(s.timing)
+    FROM submissions s
+    JOIN challenges c ON s.comp_id = c.id
+    WHERE c.name = ? AND s.user_id = ?
+  """, (challenge_name, user_id)).fetchone()[0]
+  
+  message = f"# Submission for: `{challenge_name}`\n"
+  message += f"Kernel: `{kernel_name} ({kernel_type})`\n"
+  message += f"Time: {fmt_time(timing)}\n"
+  
+  if timing <= best_time:
+    message += "**This is your new personal best!** 🎉"
+  else:
+    message += f"Your best time is {fmt_time(best_time)}"
+  
+  return message
 
 T = TypeVar("T")
 def all_same(items:list[T]): return all(x == items[0] for x in items)

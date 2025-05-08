@@ -21,6 +21,7 @@ class CreateCog(Cog):
   async def create(self, interaction: discord.Interaction, name:str, desc:str, ktype:str, input_shapes:list[tuple[int,...]],
                    output_shape:tuple[int,...], global_size:tuple[int,int,int], local_size:tuple[int,int,int], dtype:str, rand_fn:str,
                    num_tests:int, reference_code:discord.Attachment):
+    """Create a new challenge"""
     assert isinstance(interaction.channel, discord.TextChannel)
     # verify arguments
     if name in active_chals(): return await interaction.response.send_message(f"challenge with name {name} already exists", ephemeral=True)
