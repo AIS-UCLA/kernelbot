@@ -21,7 +21,6 @@ def check_user(*perms:Perm):
             if not has_permission:
                 required_roles = []
                 if Perm.USER in perms:
-                    # Also fix here
                     required_roles.append("CUDA Coda")
                 if Perm.ADMIN in perms:
                     required_roles.append("kernelbot admin")
@@ -114,8 +113,7 @@ def make_leaderboard(chal:str, with_medals:bool=True) -> str:
   
   if not resp:
     return header + "No submissions yet."
-  
-  # Add medal emojis for top 3 if requested
+      
   rankings = []
   for i, (uid, name, ktype, tm) in enumerate(resp):
     position = i + 1
