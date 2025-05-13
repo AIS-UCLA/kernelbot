@@ -62,11 +62,18 @@ def export_leaderboard_data():
         challenges = main_cur.fetchall()
         export_cur.executemany("INSERT INTO challenges VALUES (?, ?, ?)", challenges)
         
+        user_mapping = {}
+        try:
+            users = main_cur.execute("SELECT id, username FROM users").fetchall()
+            for user_id, username in users:
+                user_mapping[str(user_id)] = username
+        except Exception as e:
+            logger.warning(f"Error fetching user mappings: {e}")
+        
         main_cur.execute("""
             WITH RankedSubmissions AS (
                 SELECT 
                     s.user_id, 
-                    u.username as username,
                     c.id as challenge_id,
                     s.name as kernel_name, 
                     s.type as kernel_type, 
@@ -75,11 +82,10 @@ def export_leaderboard_data():
                     ROW_NUMBER() OVER (PARTITION BY s.user_id, s.comp_id ORDER BY s.timing ASC) as rn
                 FROM submissions s
                 JOIN challenges c ON s.comp_id = c.id
-                LEFT JOIN users u ON s.user_id = u.id
+                WHERE s.timing > 0
             )
             SELECT 
                 user_id, 
-                username,
                 challenge_id,
                 kernel_name, 
                 kernel_type, 
@@ -90,7 +96,21 @@ def export_leaderboard_data():
             ORDER BY challenge_id, timing ASC
         """)
         
-        best_submissions = main_cur.fetchall()
+        best_submissions_raw = main_cur.fetchall()
+        
+        best_submissions = []
+        for user_id, challenge_id, kernel_name, kernel_type, timing, created_at in best_submissions_raw:
+            username = user_mapping.get(str(user_id), f"User-{user_id}")
+            best_submissions.append((
+                user_id, 
+                username,
+                challenge_id,
+                kernel_name, 
+                kernel_type, 
+                timing,
+                created_at
+            ))
+        
         export_cur.executemany("""
             INSERT INTO best_submissions 
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -98,7 +118,7 @@ def export_leaderboard_data():
         
         export_conn.commit()
         export_cur.execute("VACUUM")
-        
+
         export_conn.close()
         main_conn.close()
         
