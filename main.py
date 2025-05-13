@@ -1,6 +1,9 @@
 import discord
 from discord.ext import commands
 
+import asyncio
+import subprocess
+import os
 from config import DISCORD_TOKEN
 from utils import logger, formatter
 from cogs import ShowCog, SubmitCog, CreateCog, DeleteCog, ShowDBCog, ShowSubmissionsCog
@@ -19,6 +22,27 @@ class KernelBot(commands.Bot):
     await self.add_cog(DeleteCog(self))
     await self.add_cog(ShowDBCog(self))
     await self.add_cog(ShowSubmissionsCog(self))
+
+    self.loop.create_task(self.export_and_upload_leaderboard())
+
+  async def export_and_upload_leaderboard(self):
+      """Periodically export the leaderboard data and upload it to the webhost"""
+      while True:
+          try:
+              result = subprocess.run(
+                  ["python3", os.path.join(os.path.dirname(__file__), "db_export.py")],
+                  capture_output=True,
+                  text=True
+              )
+              if result.returncode == 0:
+                  logger.info("Leaderboard exported and uploaded successfully")
+              else:
+                  logger.error(f"Leaderboard export failed: {result.stderr}")
+          except Exception as e:
+              logger.error(f"Error running leaderboard export: {e}")
+          
+          # Wait 5 minutes before running again
+          await asyncio.sleep(5 * 60)
 
   async def on_ready(self):
     logger.info(f"Logged in as {self.user}")
