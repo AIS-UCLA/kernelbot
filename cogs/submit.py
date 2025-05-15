@@ -22,7 +22,6 @@ class SubmitCog(Cog):
     chal, tensors = db.execute("SELECT id, tests FROM challenges as c WHERE c.name = ?", (challenge,)).fetchone()
     if chal is None: return await interaction.response.send_message(f"could not find challenge {challenge}", ephemeral=True)
     
-    # Skip transpose options for non-matmul challenges
     if challenge.lower() != "matmul" and (transpose_a or transpose_b):
         await interaction.edit_original_response(content="Transpose options are only available for matmul challenge")
         return
@@ -46,7 +45,7 @@ class SubmitCog(Cog):
       error_msg = str(e)
       formatted_error = f"```\n{error_msg}\n```"
       return await interaction.edit_original_response(content=f"Error while running tests:\n{formatted_error}")
-    
+    print("avg time:", tm) 
     db.execute("INSERT INTO submissions (name, type, source, comp_id, user_id, timing) VALUES (?, ?, ?, ?, ?, ?);",
               (name, ktype, src, chal, interaction.user.id, tm))
     db.commit()

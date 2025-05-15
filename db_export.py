@@ -10,11 +10,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger('leaderboard_export')
 
-MAIN_DB_PATH = "/home/gabe/kernelbot/kernelbot.db" 
-EXPORT_DB_PATH = "/home/gabe/kernelbot/leaderboard.db"
-REMOTE_HOST = "cherf.ais-ucla.org"
-REMOTE_USER = "chris" 
-REMOTE_PATH = "/www/kernelbot/" 
+MAIN_DB_PATH = "/home/kernelbot/scratch/kernelbot.db" 
+EXPORT_DB_PATH = "/home/kernelbot/leaderboard.db"
 
 def export_leaderboard_data():
     """Export minimal leaderboard data (just users and times) to a separate SQLite database"""
@@ -121,6 +118,8 @@ def export_leaderboard_data():
 
         export_conn.close()
         main_conn.close()
+
+        os.chmod(EXPORT_DB_PATH, 0o644)
         
         logger.info(f"Exported {len(challenges)} challenges and {len(best_submissions)} best submissions")
         return True
@@ -129,32 +128,5 @@ def export_leaderboard_data():
         logger.error(f"Error exporting leaderboard data: {e}")
         return False
 
-def upload_to_webhost():
-    """Upload the exported database to the webhost using a two-step process with sudo"""
-    try:
-        ssh_key_path = os.path.expanduser("~/.ssh/cherf")
-        
-        temp_path = f"/home/{REMOTE_USER}/leaderboard.db"
-        
-        subprocess.run([
-            "scp", "-i", ssh_key_path, EXPORT_DB_PATH, 
-            f"{REMOTE_USER}@{REMOTE_HOST}:{temp_path}"
-        ], check=True)
-        
-        logger.info(f"Successfully uploaded leaderboard database to temp location on {REMOTE_HOST}")
-        
-        subprocess.run([
-            "ssh", "-i", ssh_key_path, f"{REMOTE_USER}@{REMOTE_HOST}",
-            f"sudo mkdir -p {REMOTE_PATH} && sudo cp {temp_path} {REMOTE_PATH}/leaderboard.db && sudo chmod 644 {REMOTE_PATH}/leaderboard.db"
-        ], check=True)
-        
-        logger.info(f"Successfully moved leaderboard database to final destination")
-        return True
-        
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error uploading database to webhost: {e}")
-        return False
-
 if __name__ == "__main__":
-    if export_leaderboard_data():
-        upload_to_webhost()
+    export_leaderboard_data()

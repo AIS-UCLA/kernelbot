@@ -78,4 +78,6 @@ def run_tests(prog:CUDAProgram, global_size:tuple[int,int,int], local_size:tuple
         cualloc._copyout(flat_mv(out.data), out_tg)
         np.testing.assert_allclose(out, tensor_dict[f"test{i}.out"], rtol=1e-3, atol=1e-3)
     
+    print('times:', times)
+    
     return fmean(times)
