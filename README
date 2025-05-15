@@ -1,2 +1,3 @@
 requirements: tinygrad safetensors numpy discord
 register: cc register.c -o register -lsqlite3 -DDB=\"whatever.db\"
+python3 main.py
