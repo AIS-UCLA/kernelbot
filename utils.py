@@ -136,17 +136,6 @@ def get_ordinal(n: int) -> str:
         suffix = ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][n % 10]
     return f"{n}{suffix}"
 
-def format_time(seconds: float) -> str:
-    """Format time with appropriate units"""
-    if seconds < 1e-6:
-        return f"{seconds * 1e9:.0f} ns"
-    elif seconds < 1e-3:
-        return f"{seconds * 1e6:.0f} μs" 
-    elif seconds < 1:
-        return f"{seconds * 1e3:.0f} ms"
-    else:
-        return f"{seconds:.2f} s"
-
 @functools.cache
 def make_leaderboard(chal:str, with_medals:bool=True) -> str:
   # Get best submission per user
